@@ -229,6 +229,9 @@ const genEcdhSharedKey = async ({
   )[0];
 };
 
+// const bigInt2Buffer = (i: BigInt): Buffer => {
+// const buf2Bigint = (buf: ArrayBuffer | TypedArray | Buffer): bigint => {
+   
 /*
  * Encrypts a plaintext using a given key.
  * @return The ciphertext.
@@ -239,6 +242,25 @@ const encrypt = async (
 ): Promise<Ciphertext> => {
   const mimc7 = await buildMimc7();
   // [assignment] generate the IV, use Mimc7 to hash the shared key with the IV, then encrypt the plain text
+
+  // Generate the IV
+  const iv = mimc7.multiHash(plaintext, BigInt(0))
+  const ivBI = buf2Bigint(iv)
+
+  const ciphertext: Ciphertext = {
+      iv: ivBI,
+      data: plaintext.map((e: BigInt, i: number): bigint => {
+        const h = mimc7.hash(
+          sharedKey,
+          ivBI + BigInt(i))
+          const hBI = buf2Bigint(h)
+          return e.valueOf() + hBI
+      }),
+
+  }
+
+  // TODO: add asserts here
+  return ciphertext
 };
 
 /*
@@ -250,6 +272,18 @@ const decrypt = async (
   sharedKey: EcdhSharedKey,
 ): Promise<Plaintext> => {
   // [assignment] use Mimc7 to hash the shared key with the IV, then descrypt the ciphertext
+
+  const mimc7 = await buildMimc7();
+
+  const plaintext: Plaintext = ciphertext.data.map(
+    (e: BigInt, i: number): bigint => {
+      const h = mimc7.hash(sharedKey, BigInt(ciphertext.iv) + BigInt(i))
+      const hBI = buf2Bigint(h)
+      return (e.valueOf() - BigInt(hBI)).valueOf()
+    }
+)
+
+return plaintext
 };
 
 export {
