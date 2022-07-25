@@ -2,6 +2,10 @@ pragma circom 2.0.0;
 
 // [assignment] implement a variation of mastermind from https://en.wikipedia.org/wiki/Mastermind_(board_game)#Variation as a circuit
 
+include "../../node_modules/circomlib/circuits/comparators.circom";
+include "../../node_modules/circomlib/circuits/poseidon.circom";
+
+// n is num breakers ~ default would be 5
 template MastermindVariation(n) {
 
     // Public inputs
@@ -54,7 +58,8 @@ template MastermindVariation(n) {
     // https://boardgamegeek.com/boardgame/21506/new-mastermind
     // 1 point for right color, wrong spot
     // 2 points for right color, right spot
-    // 10 points for cracking the code
+    // 8 points for cracking the code
+    // 10 points for cracking the code // this would be the original, but needs a better implementation
     var points[n];
     component equalHB[n][16];
 
@@ -65,23 +70,23 @@ template MastermindVariation(n) {
               equalHB[i][4*j+k] = IsEqual();
               equalHB[i][4*j+k].in[0] <== privSoln[j];
               equalHB[i][4*j+k].in[1] <== pubGuess[i][k];
-              points[i] += equalHB[4*j+k].out;
+              points[i] += equalHB[i][4*j+k].out;
               if (j == k) {
-                  points[i] += equalHB[4*j+k].out;
+                  points[i] += equalHB[i][4*j+k].out;
               }
           }
       }
-      // 10 points for cracking the code
-      if (points[i] == 8) {
-        points[i] += 2;
-      }
+      // 10 points for cracking the code // error[T3001]: Non quadratic constraints are not allowed! // maybe isolate into another template?
+      // if (points[i] == 8) {
+      //   points[i] += 2;
+      // }
     }
 
     // Create a constraint around the number of hit
     component equalPoints[n];
     for (i=0; i<n; i++) {
       equalPoints[i] = IsEqual();
-      equalPoints[i].in[0] <== pubPoints;
+      equalPoints[i].in[0] <== pubPoints[i];
       equalPoints[i].in[1] <== points[i];
       equalPoints[i].out === 1;
     }
@@ -95,8 +100,10 @@ template MastermindVariation(n) {
     poseidon.inputs[4] <== privSoln[3];
 
     solnHashOut <== poseidon.out;
+    // log(solnHashOut);
     pubSolnHash === solnHashOut;
 
 }
 
-component main = MastermindVariation();
+// num players chosen as 2 to make test code smaller
+component main = MastermindVariation(2);
